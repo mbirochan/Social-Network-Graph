@@ -1,0 +1,15 @@
+{
+  "name": "social-network-graph",
+  "version": "1.0.0",
+  "description": "Social Network Graph Application",
+  "scripts": {
+    "start": "concurrently \"npm run start:server\" \"npm run start:frontend\"",
+    "start:frontend": "cd frontend && npm run dev",
+    "start:server": "cd server && python app.py",
+    "install:all": "npm install && cd frontend && npm install && cd ../server && pip install -r requirements.txt",
+    "build:backend": "cd backend && if not exist build mkdir build && cd build && cmake .. && cmake --build ."
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+} 

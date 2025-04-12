@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import cytoscape from 'cytoscape';
 import coseBilkent from 'cytoscape-cose-bilkent';
 import axios from 'axios';
@@ -23,6 +23,7 @@ function GraphPage() {
   const [searchError, setSearchError] = useState(null);
   const containerRef = useRef(null);
   const cyRef = useRef(null);
+  const navigate = useNavigate();
 
   // Fetch graph data
   useEffect(() => {
@@ -54,25 +55,22 @@ function GraphPage() {
   // Handle search
   const handleSearch = async () => {
     if (!searchInput.trim()) {
-      setSearchError('Please enter a node ID');
+      setSearchError('Please enter a user ID');
       return;
     }
 
     try {
-      setLoadingRecommendations(true);
       setSearchError(null);
       
       // First check if the node exists
       const searchResponse = await api.get(`/graph/search?id=${searchInput}`);
       if (!searchResponse.data.exists) {
-        setSearchError('Node not found');
+        setSearchError('User not found');
         return;
       }
 
-      // If node exists, get recommendations
-      const response = await api.get(`/graph/recommendations/${searchInput}`);
-      setRecommendations(response.data);
-      setSelectedNode(parseInt(searchInput));
+      // If node exists, navigate to search results page
+      navigate(`/search/${searchInput}`, { replace: true });
       
       // Highlight the node in the graph if it's visible
       if (cyRef.current) {
@@ -84,10 +82,8 @@ function GraphPage() {
         }
       }
     } catch (err) {
-      console.error('Error searching node:', err);
-      setSearchError(err.response?.data?.error || 'Error searching node');
-    } finally {
-      setLoadingRecommendations(false);
+      console.error('Error searching user:', err);
+      setSearchError(err.response?.data?.error || 'Error searching user');
     }
   };
 
@@ -202,93 +198,113 @@ function GraphPage() {
   }, [loading, graphData]);
 
   return (
-    <div className="graph-page" style={{ height: '100vh', display: 'flex', flexDirection: 'column', padding: '20px', boxSizing: 'border-box', overflow: 'hidden' }}>
-      <h2>Social Network Graph</h2>
-      {error && <div className="error-message" style={{ color: 'red', padding: '10px' }}>{error}</div>}
-      <div style={{ display: 'flex', flex: 1, gap: '20px', minHeight: '0', width: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
-        <div style={{ flex: 2, display: 'flex', flexDirection: 'column', minWidth: '0', width: '100%', position: 'relative' }}>
+    <div className="graph-page">
+      <div className="graph-header">
+        <h2>Social Network Graph</h2>
+        <p className="graph-description">Interactive visualization of social connections</p>
+      </div>
+      
+      {error && <div className="error-message">{error}</div>}
+      
+      <div className="graph-container">
+        <div className="graph-main">
           <div 
             ref={containerRef}
-            style={{ 
-              flex: 1,
-              height: 'calc(100vh - 250px)', 
-              border: '1px solid #ccc',
-              backgroundColor: '#f5f5f5',
-              display: loading ? 'none' : 'block',
-              position: 'relative',
-              overflow: 'visible',
-              width: '100%',
-              minWidth: '0',
-              boxSizing: 'border-box',
-              zIndex: 1
-            }} 
+            className="graph-visualization"
+            style={{ display: loading ? 'none' : 'block' }}
           />
-          <div style={{ padding: '10px', backgroundColor: '#fff', border: '1px solid #ccc', flexShrink: 0, position: 'relative', zIndex: 2 }}>
-            <p style={{ margin: '0 0 10px 0' }}>Displaying first 50 users. Use search to find any user in the network.</p>
+          {loading && (
+            <div className="loading-container">
+              <div className="loading-spinner"></div>
+              <p>Loading graph data...</p>
+            </div>
+          )}
+          <div className="graph-info">
+            <p>Displaying first 50 users. Use search to find any user in the network.</p>
           </div>
         </div>
-        <div style={{ flex: 1, padding: '20px', border: '1px solid #ccc', backgroundColor: '#fff', minWidth: '300px', maxWidth: '400px', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 250px)', boxSizing: 'border-box', position: 'relative', zIndex: 2 }}>
-          <h3>Search User</h3>
-          <div style={{ marginBottom: '20px' }}>
-            <input
-              type="number"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Enter user ID"
-              style={{ 
-                padding: '8px',
-                width: '100%',
-                marginBottom: '10px',
-                border: searchError ? '1px solid red' : '1px solid #ccc'
-              }}
-            />
-            {searchError && <div style={{ color: 'red', marginBottom: '10px' }}>{searchError}</div>}
-            <button 
-              onClick={handleSearch}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#4CAF50',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                width: '100%'
-              }}
-            >
-              Search
-            </button>
+        
+        <div className="graph-sidebar">
+          <div className="search-section">
+            <h3>Search User</h3>
+            <div className="search-input-group">
+              <input
+                type="number"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Enter user ID"
+                className={searchError ? 'error' : ''}
+              />
+              {searchError && <div className="search-error">{searchError}</div>}
+              <button 
+                onClick={handleSearch}
+                className="search-button"
+              >
+                Search
+              </button>
+            </div>
           </div>
-          <h3>Friend Recommendations</h3>
-          <div style={{ flex: 1, overflowY: 'auto', paddingRight: '10px' }}>
-            {loadingRecommendations ? (
-              <div>Loading recommendations...</div>
-            ) : selectedNode ? (
-              recommendations ? (
-                <div>
-                  <h4>Recommendations for User {selectedNode}</h4>
-                  {recommendations.recommendations.map((rec, index) => (
-                    <div key={index} style={{ marginBottom: '15px', padding: '10px', border: '1px solid #eee' }}>
-                      <div style={{ fontWeight: 'bold' }}>User {rec.user_id}</div>
-                      <div>Mutual Friends: {rec.mutual_friends_count}</div>
-                      <div style={{ fontSize: '0.9em', color: '#666' }}>
-                        Mutual Friends: {rec.mutual_friends.join(', ')}
-                      </div>
+          
+          {selectedNode && (
+            <div className="user-details-section">
+              <div className="user-profile">
+                <div className="user-avatar">
+                  <span className="avatar-text">U{selectedNode}</span>
+                </div>
+                <div className="user-info">
+                  <h3>User {selectedNode}</h3>
+                  <div className="user-stats">
+                    <div className="stat-item">
+                      <span className="stat-label">Connections</span>
+                      <span className="stat-value">{recommendations ? recommendations.length : 0}</span>
                     </div>
-                  ))}
+                  </div>
+                </div>
+              </div>
+
+              {loadingRecommendations ? (
+                <div className="loading-container">
+                  <div className="loading-spinner"></div>
+                  <p>Loading recommendations...</p>
+                </div>
+              ) : recommendations && recommendations.length > 0 ? (
+                <div className="recommendations-section">
+                  <h4>Friend Recommendations</h4>
+                  <div className="recommendations-list">
+                    {recommendations.map((rec, index) => (
+                      <div key={index} className="recommendation-card">
+                        <div className="rec-header">
+                          <div className="rec-avatar">
+                            <span className="avatar-text">U{rec.user_id}</span>
+                          </div>
+                          <div className="rec-info">
+                            <span className="rec-name">User {rec.user_id}</span>
+                            <span className="rec-mutual-count">{rec.mutual_friends_count} mutual friends</span>
+                          </div>
+                        </div>
+                        {rec.mutual_friends && rec.mutual_friends.length > 0 && (
+                          <div className="rec-mutual-friends">
+                            <span className="mutual-label">Mutual Friends:</span>
+                            <div className="mutual-list">
+                              {rec.mutual_friends.map((friend, idx) => (
+                                <span key={idx} className="mutual-friend">U{friend}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : (
-                <div>No recommendations available</div>
-              )
-            ) : (
-              <div>Search for a user to see friend recommendations</div>
-            )}
-          </div>
+                <div className="no-recommendations">
+                  <p>No recommendations available for this user</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
-      {loading && <div className="loading" style={{ padding: '20px' }}>Loading graph...</div>}
-      <Link to="/" className="btn btn-secondary" style={{ marginTop: '10px' }}>
-        Back to Home
-      </Link>
     </div>
   );
 }

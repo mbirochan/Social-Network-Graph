@@ -17,7 +17,7 @@ Before running the application, ensure you have the following installed:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/social-network-graph.git
+git clone https://github.com/mbirochan/Social-Network-Graph.git
 cd social-network-graph
 ```
 
